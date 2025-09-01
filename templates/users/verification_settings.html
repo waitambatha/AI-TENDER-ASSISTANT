@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+
+{% block title %}Verification Settings{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-cog me-2"></i>Verification Settings
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card border-info">
+                                    <div class="card-header bg-info text-white">
+                                        <h5 class="mb-0">
+                                            <i class="fas fa-envelope me-2"></i>Email Verification
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="form-check form-switch">
+                                            {{ form.email_verification_enabled }}
+                                            <label class="form-check-label" for="{{ form.email_verification_enabled.id_for_label }}">
+                                                Enable Email Verification
+                                            </label>
+                                        </div>
+                                        <small class="text-muted">
+                                            When enabled, users must verify their email address during registration.
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="card border-success">
+                                    <div class="card-header bg-success text-white">
+                                        <h5 class="mb-0">
+                                            <i class="fas fa-phone me-2"></i>Phone Verification
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="form-check form-switch">
+                                            {{ form.phone_verification_enabled }}
+                                            <label class="form-check-label" for="{{ form.phone_verification_enabled.id_for_label }}">
+                                                Enable Phone Verification
+                                            </label>
+                                        </div>
+                                        <small class="text-muted">
+                                            When enabled, users must verify their phone number via SMS during registration.
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4 text-center">
+                            <button type="submit" class="btn btn-primary btn-lg px-5">
+                                <i class="fas fa-save me-2"></i>Save Settings
+                            </button>
+                            <a href="{% url 'dashboard' %}" class="btn btn-secondary btn-lg px-5 ms-3">
+                                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                            </a>
+                        </div>
+                    </form>
+                    
+                    <div class="mt-4 p-3 bg-light rounded">
+                        <h6 class="text-primary">Current Status:</h6>
+                        <div class="row">
+                            <div class="col-6">
+                                <span class="badge {% if settings.email_verification_enabled %}bg-success{% else %}bg-secondary{% endif %}">
+                                    Email: {% if settings.email_verification_enabled %}ON{% else %}OFF{% endif %}
+                                </span>
+                            </div>
+                            <div class="col-6">
+                                <span class="badge {% if settings.phone_verification_enabled %}bg-success{% else %}bg-secondary{% endif %}">
+                                    Phone: {% if settings.phone_verification_enabled %}ON{% else %}OFF{% endif %}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

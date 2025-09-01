@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth.password_validation import validate_password
-from .models import CustomUser
+from .models import CustomUser, VerificationSettings
 
 class CustomUserCreationForm(forms.ModelForm):
     username = forms.CharField(widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Username'}))
@@ -31,3 +31,15 @@ class CustomUserCreationForm(forms.ModelForm):
 
 class EmailVerificationForm(forms.Form):
     code = forms.CharField(max_length=6, required=True, label='Verification Code', widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter code'}))
+
+class PhoneVerificationForm(forms.Form):
+    code = forms.CharField(max_length=6, required=True, label='Phone Verification Code', widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter SMS code'}))
+
+class VerificationSettingsForm(forms.ModelForm):
+    class Meta:
+        model = VerificationSettings
+        fields = ['email_verification_enabled', 'phone_verification_enabled']
+        widgets = {
+            'email_verification_enabled': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'phone_verification_enabled': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
