@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+
+{% block title %}Login - Tender AI{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-5">
+        <div class="card shadow-lg">
+            <div class="card-header text-center text-white" style="background: var(--primary-gradient);">
+                <i class="bi bi-shield-lock display-4 mb-2"></i>
+                <h2 class="card-title mb-0 fw-bold">Welcome Back</h2>
+                <p class="mb-0 opacity-75">Sign in to your account</p>
+            </div>
+            <div class="card-body p-5">
+                <form method="post" id="loginForm">
+                    {% csrf_token %}
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger d-flex align-items-center">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            <div>
+                                {% for error in form.non_field_errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    <div class="mb-4">
+                        <label for="id_username" class="form-label fw-semibold">Username</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0">
+                                <i class="bi bi-person-fill text-primary"></i>
+                            </span>
+                            <input type="text" name="username" class="form-control border-start-0 ps-0" 
+                                   placeholder="Enter your username" required id="id_username">
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="id_password" class="form-label fw-semibold">Password</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0">
+                                <i class="bi bi-lock-fill text-primary"></i>
+                            </span>
+                            <input type="password" name="password" class="form-control border-start-0 border-end-0 ps-0" 
+                                   placeholder="Enter your password" required id="id_password">
+                            <span class="input-group-text bg-light border-start-0" id="togglePassword" style="cursor: pointer;">
+                                <i class="bi bi-eye-fill text-muted" id="toggleIcon"></i>
+                            </span>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 py-3 fw-semibold">
+                        <i class="bi bi-box-arrow-in-right me-2"></i>
+                        Sign In
+                    </button>
+                </form>
+            </div>
+            <div class="card-footer text-center bg-light">
+                <p class="mb-0">
+                    Don't have an account? 
+                    <a href="{% url 'register' %}" class="text-decoration-none fw-semibold">
+                        Create one here
+                    </a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const togglePassword = document.querySelector('#togglePassword');
+    const password = document.querySelector('#id_password');
+    const toggleIcon = document.querySelector('#toggleIcon');
+
+    togglePassword.addEventListener('click', function (e) {
+        const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
+        password.setAttribute('type', type);
+        toggleIcon.classList.toggle('bi-eye-fill');
+        toggleIcon.classList.toggle('bi-eye-slash-fill');
+    });
+</script>
+{% endblock %}
