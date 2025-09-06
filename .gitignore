@@ -9,3 +9,6 @@ db.sqlite3-journal
 media/
 .env
 venv/
+pgdata/
+weaviate_data/
+.venv/

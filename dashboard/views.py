@@ -10,7 +10,7 @@ import openai
 from django.conf import settings
 import json
 from datetime import datetime
-
+from .weaviate_module.utils import send_to_weaviate
 # Set OpenAI API key from environment
 openai.api_key = os.getenv('OPENAI_API_KEY')
 
@@ -121,28 +121,36 @@ def process_document_view(request, document_id):
         # Extract text from PDF
         text_content = extract_text_from_pdf(document.file.path)
         
-        if not text_content.strip():
-            raise Exception("No text could be extracted from the document")
+        is_document_unique = send_to_weaviate(document.file.name,text_content)
         
-        # Process with OpenAI
-        ai_summary = process_with_openai(text_content, document.file.name)
+        if is_document_unique:
+            if not text_content.strip():
+                raise Exception("No text could be extracted from the document")
+            
+            # Process with OpenAI
+            ai_summary = process_with_openai(text_content, document.file.name)
+            
+            # Save the AI summary
+            summary_filename = f"{os.path.splitext(document.file.name)[0]}_ai_summarized.json"
+            summary_path = os.path.join(settings.MEDIA_ROOT, 'summaries', summary_filename)
+            
+            # Ensure summaries directory exists
+            os.makedirs(os.path.dirname(summary_path), exist_ok=True)
+            
+            with open(summary_path, 'w', encoding='utf-8') as f:
+                json.dump(ai_summary, f, indent=2, ensure_ascii=False)
+            
+            # Update document record
+            document.summarized_file.name = f'summaries/{summary_filename}'
+            document.status = 'processed'
+            document.save()
+            
+            messages.success(request, f'Successfully processed "{document.file.name}" with AI analysis.')
         
-        # Save the AI summary
-        summary_filename = f"{os.path.splitext(document.file.name)[0]}_ai_summarized.json"
-        summary_path = os.path.join(settings.MEDIA_ROOT, 'summaries', summary_filename)
-        
-        # Ensure summaries directory exists
-        os.makedirs(os.path.dirname(summary_path), exist_ok=True)
-        
-        with open(summary_path, 'w', encoding='utf-8') as f:
-            json.dump(ai_summary, f, indent=2, ensure_ascii=False)
-        
-        # Update document record
-        document.summarized_file.name = f'summaries/{summary_filename}'
-        document.status = 'processed'
-        document.save()
-        
-        messages.success(request, f'Successfully processed "{document.file.name}" with AI analysis.')
+        else:
+            document.status = 'failed'
+            document.save()
+            messages.error(request, f'Failed to process "{document.file.name}": A similar file has already been uploaded.')
         
     except Exception as e:
         document.status = 'failed'
