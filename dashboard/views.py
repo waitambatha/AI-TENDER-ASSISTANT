@@ -74,7 +74,7 @@ def upload_file_view(request):
             return redirect('dashboard')
         else:
             messages.error(request, 'Error uploading file. Please check the file format and size.')
-    
+
     return redirect('dashboard')
 
 @login_required

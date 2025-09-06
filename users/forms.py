@@ -29,6 +29,23 @@ class CustomUserCreationForm(forms.ModelForm):
             user.save()
         return user
 
+class VerificationMethodForm(forms.Form):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        settings_obj = VerificationSettings.get_settings()
+        
+        choices = []
+        if settings_obj.email_verification_enabled:
+            choices.append(('email', 'Email Verification'))
+        if settings_obj.phone_verification_enabled:
+            choices.append(('phone', 'Phone Verification'))
+        
+        self.fields['verification_method'] = forms.ChoiceField(
+            choices=choices,
+            widget=forms.RadioSelect(attrs={'class': 'form-check-input'}),
+            label='Choose verification method'
+        )
+
 class EmailVerificationForm(forms.Form):
     code = forms.CharField(max_length=6, required=True, label='Verification Code', widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter code'}))
 
