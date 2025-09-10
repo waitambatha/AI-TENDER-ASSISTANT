@@ -230,6 +230,11 @@
                                             <i class="bi bi-download"></i>
                                         </a>
                                     {% endif %}
+                                    <button type="button" class="btn btn-sm btn-outline-danger" 
+                                            title="Delete Document" 
+                                            onclick="confirmDelete({{ document.id }}, '{{ document.file.name|escapejs }}')">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
                                 </div>
                             </td>
                         </tr>
@@ -386,5 +391,23 @@
         uploadBtn.disabled = true;
         fileInput.value = '';
     });
+
+    // Delete confirmation
+    function confirmDelete(documentId, filename) {
+        if (confirm(`Are you sure you want to delete "${filename}"? This action cannot be undone.`)) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/dashboard/document/${documentId}/delete/`;
+            
+            const csrfToken = document.createElement('input');
+            csrfToken.type = 'hidden';
+            csrfToken.name = 'csrfmiddlewaretoken';
+            csrfToken.value = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            
+            form.appendChild(csrfToken);
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
 </script>
 {% endblock %}

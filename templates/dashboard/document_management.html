@@ -1,0 +1,446 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Document Management - Tender AI Assistant{% endblock %}
+
+{% block extra_css %}
+<style>
+    .document-management {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 15px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        color: white;
+    }
+    .filter-section {
+        background: white;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .document-table {
+        background: white;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .table th {
+        background: #f8f9fa;
+        border: none;
+        font-weight: 600;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+    .document-row:hover {
+        background-color: #f8f9fa;
+        transition: background-color 0.2s ease;
+    }
+    .document-row.selected {
+        background-color: #e3f2fd;
+    }
+    .file-size {
+        font-size: 0.85em;
+        color: #6c757d;
+    }
+    .status-badge {
+        font-size: 0.75em;
+        padding: 0.25rem 0.5rem;
+    }
+    .bulk-actions {
+        background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+        border: 1px solid #e1f5fe;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        display: none;
+        animation: slideDown 0.3s ease;
+    }
+    .bulk-actions.show {
+        display: block;
+    }
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    .selected-count {
+        font-weight: bold;
+        color: #1976d2;
+    }
+    .download-location {
+        background: #fff3cd;
+        border: 1px solid #ffeaa7;
+        border-radius: 5px;
+        padding: 0.5rem;
+        margin-top: 0.5rem;
+        font-size: 0.85em;
+    }
+    .btn-group .btn {
+        border-radius: 0;
+    }
+    .btn-group .btn:first-child {
+        border-top-left-radius: 0.375rem;
+        border-bottom-left-radius: 0.375rem;
+    }
+    .btn-group .btn:last-child {
+        border-top-right-radius: 0.375rem;
+        border-bottom-right-radius: 0.375rem;
+    }
+    .empty-state {
+        padding: 3rem 1rem;
+        text-align: center;
+    }
+    .empty-state i {
+        font-size: 4rem;
+        color: #dee2e6;
+        margin-bottom: 1rem;
+    }
+    .search-highlight {
+        background-color: #fff3cd;
+        padding: 0.1rem 0.2rem;
+        border-radius: 0.2rem;
+    }
+    .table-responsive {
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+    }
+    .btn-primary:hover {
+        background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+        transform: translateY(-1px);
+    }
+    .document-checkbox:checked + label::after {
+        content: '✓';
+        position: absolute;
+        left: 3px;
+        top: -1px;
+        color: white;
+        font-size: 12px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="document-management">
+        <h2 class="mb-3">
+            <i class="fas fa-folder-open me-2"></i>Document Management
+        </h2>
+        <p class="mb-0">Manage, search, and download your uploaded documents</p>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="filter-section">
+        <form method="GET" class="row g-3">
+            <div class="col-md-4">
+                <label for="search" class="form-label">Search Documents</label>
+                <input type="text" class="form-control" id="search" name="search" 
+                       value="{{ search }}" placeholder="Search by filename...">
+            </div>
+            <div class="col-md-3">
+                <label for="date_from" class="form-label">From Date</label>
+                <input type="date" class="form-control" id="date_from" name="date_from" value="{{ date_from }}">
+            </div>
+            <div class="col-md-3">
+                <label for="date_to" class="form-label">To Date</label>
+                <input type="date" class="form-control" id="date_to" name="date_to" value="{{ date_to }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">&nbsp;</label>
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search me-1"></i>Filter
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Bulk Actions -->
+    <div class="bulk-actions" id="bulkActions">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <span class="selected-count" id="selectedCount">0 documents selected</span>
+                <div class="download-location">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Downloads will be saved to your default Downloads folder. 
+                    You can change the location in your browser settings.
+                </div>
+            </div>
+            <div class="col-md-6 text-end">
+                <button type="button" class="btn btn-success me-2" onclick="downloadSelected()">
+                    <i class="fas fa-download me-1"></i>Download Selected
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="clearSelection()">
+                    <i class="fas fa-times me-1"></i>Clear Selection
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Documents Table -->
+    <div class="document-table">
+        <form id="bulkDownloadForm" method="POST" action="{% url 'bulk_download_documents' %}">
+            {% csrf_token %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th width="50">
+                                <input type="checkbox" id="selectAll" onchange="toggleSelectAll()" class="form-check-input">
+                            </th>
+                            <th>Document Name</th>
+                            <th>Upload Date</th>
+                            <th>Status</th>
+                            <th>File Size</th>
+                            <th width="150">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for document in documents %}
+                        <tr class="document-row">
+                            <td>
+                                <input type="checkbox" name="document_ids" value="{{ document.id }}" 
+                                       class="document-checkbox form-check-input" onchange="updateBulkActions()">
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-file-pdf text-danger me-2"></i>
+                                    <div>
+                                        <strong>{{ document.file.name|truncatechars:50 }}</strong>
+                                        {% if document.file.name|length > 50 %}
+                                        <br><small class="text-muted">{{ document.file.name }}</small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div>{{ document.uploaded_at|date:"M d, Y" }}</div>
+                                <small class="text-muted">{{ document.uploaded_at|date:"H:i" }}</small>
+                            </td>
+                            <td>
+                                {% if document.status == 'processed' %}
+                                    <span class="badge bg-success status-badge">
+                                        <i class="fas fa-check me-1"></i>Processed
+                                    </span>
+                                {% elif document.status == 'processing' %}
+                                    <span class="badge bg-warning status-badge">
+                                        <i class="fas fa-spinner fa-spin me-1"></i>Processing
+                                    </span>
+                                {% elif document.status == 'failed' %}
+                                    <span class="badge bg-danger status-badge">
+                                        <i class="fas fa-times me-1"></i>Failed
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-secondary status-badge">
+                                        <i class="fas fa-upload me-1"></i>Uploaded
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="file-size">
+                                    {% if document.file_size %}
+                                        {{ document.file_size|filesizeformat }}
+                                    {% else %}
+                                        <span class="text-muted">N/A</span>
+                                    {% endif %}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{% url 'view_document' document.id %}" 
+                                       class="btn btn-outline-primary" title="View Document">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{% url 'document_detail' document.id %}" 
+                                       class="btn btn-outline-info" title="Details">
+                                        <i class="fas fa-info-circle"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-outline-success" 
+                                            onclick="downloadSingle({{ document.id }})" title="Download">
+                                        <i class="fas fa-download"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="empty-state">
+                                <i class="fas fa-folder-open"></i>
+                                <h5 class="text-muted mb-2">No documents found</h5>
+                                <p class="text-muted mb-0">
+                                    {% if search or date_from or date_to %}
+                                        No documents match your search criteria. Try adjusting your filters.
+                                    {% else %}
+                                        You haven't uploaded any documents yet.
+                                    {% endif %}
+                                </p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </form>
+    </div>
+
+    <!-- Summary -->
+    {% if documents %}
+    <div class="mt-3">
+        <small class="text-muted">
+            Showing {{ documents|length }} document{{ documents|length|pluralize }}
+        </small>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function toggleSelectAll() {
+    const selectAll = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('.document-checkbox');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAll.checked;
+    });
+    
+    updateBulkActions();
+}
+
+function updateBulkActions() {
+    const checkboxes = document.querySelectorAll('.document-checkbox:checked');
+    const bulkActions = document.getElementById('bulkActions');
+    const selectedCount = document.getElementById('selectedCount');
+    
+    if (checkboxes.length > 0) {
+        bulkActions.classList.add('show');
+        selectedCount.textContent = `${checkboxes.length} document${checkboxes.length !== 1 ? 's' : ''} selected`;
+        
+        // Calculate total size of selected files
+        let totalSize = 0;
+        checkboxes.forEach(checkbox => {
+            const row = checkbox.closest('tr');
+            const sizeText = row.querySelector('.file-size').textContent.trim();
+            if (sizeText !== 'N/A') {
+                // Simple size parsing - this is approximate
+                const sizeMatch = sizeText.match(/(\d+(?:\.\d+)?)\s*(\w+)/);
+                if (sizeMatch) {
+                    const value = parseFloat(sizeMatch[1]);
+                    const unit = sizeMatch[2].toLowerCase();
+                    let bytes = value;
+                    if (unit.includes('kb')) bytes *= 1024;
+                    else if (unit.includes('mb')) bytes *= 1024 * 1024;
+                    else if (unit.includes('gb')) bytes *= 1024 * 1024 * 1024;
+                    totalSize += bytes;
+                }
+            }
+        });
+        
+        if (totalSize > 0) {
+            const formattedSize = formatFileSize(totalSize);
+            selectedCount.innerHTML = `${checkboxes.length} document${checkboxes.length !== 1 ? 's' : ''} selected<br><small class="text-muted">Total size: ${formattedSize}</small>`;
+        }
+    } else {
+        bulkActions.classList.remove('show');
+    }
+    
+    // Update select all checkbox
+    const allCheckboxes = document.querySelectorAll('.document-checkbox');
+    const selectAll = document.getElementById('selectAll');
+    selectAll.checked = checkboxes.length === allCheckboxes.length && allCheckboxes.length > 0;
+    selectAll.indeterminate = checkboxes.length > 0 && checkboxes.length < allCheckboxes.length;
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function downloadSelected() {
+    const checkboxes = document.querySelectorAll('.document-checkbox:checked');
+    
+    if (checkboxes.length === 0) {
+        alert('Please select at least one document to download.');
+        return;
+    }
+    
+    // Show loading indicator
+    const downloadBtn = event.target;
+    const originalText = downloadBtn.innerHTML;
+    downloadBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Preparing Download...';
+    downloadBtn.disabled = true;
+    
+    // Submit form
+    document.getElementById('bulkDownloadForm').submit();
+    
+    // Reset button after a delay (in case download doesn't redirect)
+    setTimeout(() => {
+        downloadBtn.innerHTML = originalText;
+        downloadBtn.disabled = false;
+    }, 3000);
+}
+
+function downloadSingle(documentId) {
+    // Clear all checkboxes first
+    document.querySelectorAll('.document-checkbox').forEach(cb => cb.checked = false);
+    
+    // Check only the selected document
+    document.querySelector(`input[value="${documentId}"]`).checked = true;
+    
+    // Submit the form
+    document.getElementById('bulkDownloadForm').submit();
+}
+
+function clearSelection() {
+    document.querySelectorAll('.document-checkbox').forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    document.getElementById('selectAll').checked = false;
+    updateBulkActions();
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    updateBulkActions();
+    
+    // Add keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        // Ctrl+A to select all
+        if (e.ctrlKey && e.key === 'a' && !e.target.matches('input[type="text"], input[type="search"], textarea')) {
+            e.preventDefault();
+            document.getElementById('selectAll').checked = true;
+            toggleSelectAll();
+        }
+        
+        // Escape to clear selection
+        if (e.key === 'Escape') {
+            clearSelection();
+        }
+    });
+    
+    // Auto-submit search form on Enter
+    document.getElementById('search').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.target.closest('form').submit();
+        }
+    });
+});
+</script>
+{% endblock %}

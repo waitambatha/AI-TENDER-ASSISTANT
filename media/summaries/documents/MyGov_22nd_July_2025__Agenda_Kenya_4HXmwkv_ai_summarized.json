@@ -1,9 +1,0 @@
-{
-  "error": "AI processing failed: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your_ope************here. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}",
-  "extracted_text": "BY MOSES WEKESA, KNA\nPublic schools have \nbeen directed to \nshift procurement \nprocesses to the Govern -\nment’s E-procurement \n(EGP) portal whenever \nthey source goods and \nservices.\nSpeaking at Esumeyia Secondary School  \nKakamega, the Principal \nSecretary (PS) for Basic \nEducation, Prof Julius \nBitok, emphasized that \nschools, as public insti -\ntutions, must align with \nother government enti -\nties in adopting the digi -YOUR WEEKLY REVIEWwww.gaa. go.ke\nIssue No. 4/2025-2026July 22, 2025 \n47\nLabour Inspectorate \nOfficers the Ministry \nof Labour and Social \nProtection has deployed \nacross all 47 counties to \nmonitor and enforce labour \nlaws\n 50\n Local exhibitors \nwho attended \nthe International \nHousing Expo in \nNairobi recently\n400,000\nNumber of people in \nTurkana County who do \nnot have IDs despite having attained the requisite age\n472m\nProjected cost of the \nKakamega Milimani \nAffordable Housing Project \nthat will have  220 housing \nunits consisting \nof 60 studio units, \n20 one-bedr...",
-  "metadata": {
-    "filename": "documents/MyGov_22nd_July_2025__Agenda_Kenya_4HXmwkv.pdf",
-    "processed_at": "2025-08-29T07:49:24.917935",
-    "status": "failed"
-  }
-}

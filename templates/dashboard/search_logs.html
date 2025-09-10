@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Search Logs - Tender AI Assistant{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-history me-2"></i>Search History</h2>
+                <a href="{% url 'dashboard' %}" class="btn btn-primary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>All Search Logs</h5>
+                </div>
+                <div class="card-body">
+                    {% if logs %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Date & Time</th>
+                                        <th>Query</th>
+                                        <th>Results Count</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for log in logs %}
+                                    <tr>
+                                        <td>{{ log.created_at|date:"M d, Y H:i" }}</td>
+                                        <td>
+                                            <strong>{{ log.query|truncatechars:80 }}</strong>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-primary">{{ log.results|length }} result{{ log.results|length|pluralize }}</span>
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-info" 
+                                                    onclick="showResults({{ log.id }}, '{{ log.query|escapejs }}', {{ log.results|safe }})">
+                                                <i class="fas fa-eye"></i> View Results
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center text-muted py-5">
+                            <i class="fas fa-search fa-3x mb-3"></i>
+                            <h5>No Search History</h5>
+                            <p>You haven't performed any searches yet.</p>
+                            <a href="{% url 'dashboard' %}" class="btn btn-primary">Start Searching</a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Results Modal -->
+<div class="modal fade" id="resultsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Search Results</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="modalQuery" class="mb-3"></div>
+                <div id="modalResults"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function showResults(logId, query, results) {
+    document.getElementById('modalQuery').innerHTML = `<strong>Query:</strong> ${query}`;
+    
+    let html = '';
+    if (results.length === 0) {
+        html = '<p class="text-muted">No results found for this query.</p>';
+    } else {
+        results.forEach(result => {
+            html += `
+                <div class="border rounded p-3 mb-3">
+                    <h6>${result.title || 'Document'}</h6>
+                    <p>${result.summary ? result.summary.substring(0, 300) + '...' : result.content.substring(0, 300) + '...'}</p>
+                    <small class="text-muted">Document ID: ${result.document_id}</small>
+                </div>
+            `;
+        });
+    }
+    
+    document.getElementById('modalResults').innerHTML = html;
+    new bootstrap.Modal(document.getElementById('resultsModal')).show();
+}
+</script>
+{% endblock %}

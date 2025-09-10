@@ -138,6 +138,9 @@ AUTH_USER_MODEL = 'users.CustomUser'
 # Email Configuration
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = os.getenv('EMAIL_HOST', 'mail.masterclass.co.ke')
+
+# Encryption key for API keys (generate with: from cryptography.fernet import Fernet; Fernet.generate_key())
+ENCRYPTION_KEY = os.getenv('ENCRYPTION_KEY', 'gAAAAABhZ1234567890abcdefghijklmnopqrstuvwxyz=')
 EMAIL_PORT = int(os.getenv('EMAIL_PORT', '465'))
 EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', 'True').lower() == 'true'
 EMAIL_USE_TLS = False  # SSL and TLS are mutually exclusive
