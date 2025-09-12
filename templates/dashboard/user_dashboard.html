@@ -12,10 +12,12 @@
         margin-bottom: 2rem;
         color: white;
     }
+
     .search-results {
         max-height: 400px;
         overflow-y: auto;
     }
+
     .result-item {
         border: 1px solid #e0e0e0;
         border-radius: 8px;
@@ -23,17 +25,19 @@
         margin-bottom: 1rem;
         background: #f8f9fa;
     }
+
     .api-key-section {
         background: #f8f9fa;
         border-radius: 10px;
         padding: 1.5rem;
         margin-bottom: 2rem;
     }
+
     .recent-searches {
         background: white;
         border-radius: 10px;
         padding: 1.5rem;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     }
 </style>
 {% endblock %}
@@ -61,14 +65,14 @@
         <form id="searchForm" class="mt-3">
             {% csrf_token %}
             <div class="input-group mb-3">
-                <input type="text" class="form-control form-control-lg" 
-                       id="searchQuery" placeholder="Search for tender documents, requirements, dates..." required>
+                <input type="text" class="form-control form-control-lg" id="searchQuery"
+                    placeholder="Search for tender documents, requirements, dates..." required>
                 <button class="btn btn-light btn-lg" type="submit">
                     <i class="fas fa-search"></i> Search
                 </button>
             </div>
         </form>
-        
+
         <!-- Filters -->
         <div class="row mt-3">
             <div class="col-md-6">
@@ -119,31 +123,32 @@
                 <button class="btn btn-primary btn-sm mb-3" data-bs-toggle="modal" data-bs-target="#apiKeyModal">
                     <i class="fas fa-plus"></i> Add API Key
                 </button>
-                
+
                 {% if user_api_keys %}
-                    {% for key in user_api_keys %}
-                    <div class="d-flex justify-content-between align-items-center mb-2 p-2 bg-white rounded">
-                        <span class="small">{{ key.name }} {% if key.is_active %}<span class="badge bg-success">Active</span>{% endif %}</span>
-                        <div>
-                            {% if not key.is_active %}
-                            <form method="post" action="{% url 'manage_api_keys' %}" class="d-inline">
-                                {% csrf_token %}
-                                <input type="hidden" name="action" value="activate">
-                                <input type="hidden" name="key_id" value="{{ key.id }}">
-                                <button type="submit" class="btn btn-sm btn-outline-success">Activate</button>
-                            </form>
-                            {% endif %}
-                            <form method="post" action="{% url 'manage_api_keys' %}" class="d-inline">
-                                {% csrf_token %}
-                                <input type="hidden" name="action" value="delete">
-                                <input type="hidden" name="key_id" value="{{ key.id }}">
-                                <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
-                            </form>
-                        </div>
+                {% for key in user_api_keys %}
+                <div class="d-flex justify-content-between align-items-center mb-2 p-2 bg-white rounded">
+                    <span class="small">{{ key.name }} {% if key.is_active %}<span
+                            class="badge bg-success">Active</span>{% endif %}</span>
+                    <div>
+                        {% if not key.is_active %}
+                        <form method="post" action="{% url 'manage_api_keys' %}" class="d-inline">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="activate">
+                            <input type="hidden" name="key_id" value="{{ key.id }}">
+                            <button type="submit" class="btn btn-sm btn-outline-success">Activate</button>
+                        </form>
+                        {% endif %}
+                        <form method="post" action="{% url 'manage_api_keys' %}" class="d-inline">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="delete">
+                            <input type="hidden" name="key_id" value="{{ key.id }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                        </form>
                     </div>
-                    {% endfor %}
+                </div>
+                {% endfor %}
                 {% else %}
-                    <p class="small text-muted">No custom API keys configured. Using default system key.</p>
+                <p class="small text-muted">No custom API keys configured. Using default system key.</p>
                 {% endif %}
             </div>
 
@@ -153,17 +158,17 @@
                     <h6><i class="fas fa-history me-2"></i>Recent Searches</h6>
                     <a href="{% url 'search_logs' %}" class="btn btn-sm btn-outline-primary">View All</a>
                 </div>
-                
+
                 {% if recent_searches %}
-                    {% for search in recent_searches %}
-                    <div class="border-bottom pb-2 mb-2">
-                        <div class="small text-muted">{{ search.created_at|date:"M d, H:i" }}</div>
-                        <div class="fw-bold">{{ search.query|truncatechars:50 }}</div>
-                        <div class="small">{{ search.results|length }} result{{ search.results|length|pluralize }}</div>
-                    </div>
-                    {% endfor %}
+                {% for search in recent_searches %}
+                <div class="border-bottom pb-2 mb-2">
+                    <div class="small text-muted">{{ search.created_at|date:"M d, H:i" }}</div>
+                    <div class="fw-bold">{{ search.query|truncatechars:50 }}</div>
+                    <div class="small">{{ search.results|length }} result{{ search.results|length|pluralize }}</div>
+                </div>
+                {% endfor %}
                 {% else %}
-                    <p class="text-muted small">No recent searches</p>
+                <p class="text-muted small">No recent searches</p>
                 {% endif %}
             </div>
         </div>
@@ -184,117 +189,176 @@
                     <input type="hidden" name="action" value="add">
                     <div class="mb-3">
                         <label for="keyName" class="form-label">Key Name</label>
-                        <input type="text" class="form-control" id="keyName" name="name" required>
+                        <select class="form-select" id="keyName" name="name" required>
+                            <option value="" disabled>Select a provider</option>
+                            <option value="X-OpenAI-Api-Key">OpenAI</option>
+                            <option value="X-Cohere-Api-Key">Cohere</option>
+                            <option value="X-Palm-Api-Key">Google PaLM</option>
+                            <option value="X-AWS-Access-Key">AWS Bedrock</option>
+                            <option value="X-Mistral-Api-Key">Mistral</option>
+                            <option value="X-OctoAI-Api-Key">OctoAI</option>
+                            <option value="X-Anthropic-Api-Key">Anthropic</option>
+                            <option value="X-Databricks-Token">Databricks</option>
+                            <option value="X-Friendli-Token">FriendliAI</option>
+                            <option value="generative-ollama">Ollama</option>
+                            <option value="X-Anyscale-Api-Key">Anyscale</option>
+                        </select>
+                        <!-- <input type="text" class="form-control" id="keyName" name="name" required> -->
                     </div>
-                    <div class="mb-3">
+                    <div class="mb-3" id="apiKeyGroup">
                         <label for="apiKey" class="form-label">API Key</label>
                         <input type="password" class="form-control" id="apiKey" name="api_key" required>
-                        <div class="form-text">Your API key will be encrypted and stored securely.</div>
+                        <div class="form-text" id="apiKeyHelp">Your API key will be encrypted and stored securely.</div>
                     </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Add Key</button>
-                </div>
+                    <div class="mb-3 d-none" id="awsSecretGroup">
+                        <label for="awsSecretKey" class="form-label">AWS Secret Key</label>
+                        <input type="password" class="form-control" id="awsSecretKey" name="aws_secret_key">
+                        <div class="form-text">Your AWS secret key will be encrypted and stored securely.</div>
+                    </div>
             </form>
         </div>
     </div>
 </div>
 
 <script>
-let allResults = [];
+    let allResults = [];
 
-document.getElementById('searchForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    const query = document.getElementById('searchQuery').value.trim();
-    if (!query) return;
-    
-    const resultsDiv = document.getElementById('searchResults');
-    const spinner = document.getElementById('loadingSpinner');
-    
-    spinner.classList.remove('d-none');
-    resultsDiv.innerHTML = '';
-    
-    fetch('{% url "search_documents" %}', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-        },
-        body: `query=${encodeURIComponent(query)}`
-    })
-    .then(response => response.json())
-    .then(data => {
-        spinner.classList.add('d-none');
-        
-        if (data.error) {
-            resultsDiv.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+    document.getElementById('searchForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        const query = document.getElementById('searchQuery').value.trim();
+        if (!query) return;
+
+        const resultsDiv = document.getElementById('searchResults');
+        const spinner = document.getElementById('loadingSpinner');
+
+        spinner.classList.remove('d-none');
+        resultsDiv.innerHTML = '';
+
+        fetch('{% url "search_documents" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: `query=${encodeURIComponent(query)}`
+        })
+            .then(response => response.json())
+            .then(data => {
+                spinner.classList.add('d-none');
+
+                if (data.error) {
+                    resultsDiv.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+                    return;
+                }
+
+                allResults = data.results;
+                displayResults(allResults, data.from_cache);
+            })
+            .catch(error => {
+                spinner.classList.add('d-none');
+                resultsDiv.innerHTML = '<div class="alert alert-danger">Search failed. Please try again.</div>';
+            });
+    });
+
+    function displayResults(results, fromCache = false) {
+        const resultsDiv = document.getElementById('searchResults');
+
+        if (results.length === 0) {
+            resultsDiv.innerHTML = '<div class="text-center text-muted"><p>No results found</p></div>';
             return;
         }
-        
-        allResults = data.results;
-        displayResults(allResults, data.from_cache);
-    })
-    .catch(error => {
-        spinner.classList.add('d-none');
-        resultsDiv.innerHTML = '<div class="alert alert-danger">Search failed. Please try again.</div>';
-    });
-});
 
-function displayResults(results, fromCache = false) {
-    const resultsDiv = document.getElementById('searchResults');
-    
-    if (results.length === 0) {
-        resultsDiv.innerHTML = '<div class="text-center text-muted"><p>No results found</p></div>';
-        return;
-    }
-    
-    let html = '';
-    if (fromCache) {
-        html += '<div class="alert alert-info"><i class="fas fa-database me-2"></i>Results from cache</div>';
-    }
-    
-    results.forEach(result => {
-        html += `
+        let html = '';
+        if (fromCache) {
+            html += '<div class="alert alert-info"><i class="fas fa-database me-2"></i>Results from cache</div>';
+        }
+
+        results.forEach(result => {
+            html += `
             <div class="result-item">
                 <h6>${result.title || 'Document'}</h6>
                 <p class="mb-2">${result.summary ? result.summary.substring(0, 200) + '...' : result.content.substring(0, 200) + '...'}</p>
                 <small class="text-muted">Document ID: ${result.document_id}</small>
             </div>
         `;
+        });
+
+        resultsDiv.innerHTML = html;
+    }
+
+    // Filter functionality
+    document.getElementById('documentFilter').addEventListener('change', function () {
+        applyFilters();
     });
-    
-    resultsDiv.innerHTML = html;
-}
 
-// Filter functionality
-document.getElementById('documentFilter').addEventListener('change', function() {
-    applyFilters();
-});
+    document.getElementById('dateFilter').addEventListener('change', function () {
+        applyFilters();
+    });
 
-document.getElementById('dateFilter').addEventListener('change', function() {
-    applyFilters();
-});
+    function applyFilters() {
+        const docFilter = document.getElementById('documentFilter').value;
+        const dateFilter = document.getElementById('dateFilter').value;
 
-function applyFilters() {
-    const docFilter = document.getElementById('documentFilter').value;
-    const dateFilter = document.getElementById('dateFilter').value;
-    
-    let filteredResults = allResults;
-    
-    if (docFilter) {
-        filteredResults = filteredResults.filter(result => 
-            result.document_id == docFilter
-        );
+        let filteredResults = allResults;
+
+        if (docFilter) {
+            filteredResults = filteredResults.filter(result =>
+                result.document_id == docFilter
+            );
+        }
+
+        if (dateFilter) {
+            // This would need document date info in results
+            // For now, just display all results
+        }
+
+        displayResults(filteredResults);
     }
-    
-    if (dateFilter) {
-        // This would need document date info in results
-        // For now, just display all results
+
+    document.getElementById('keyName').addEventListener('change', function () {
+    const apiKeyInput = document.getElementById('apiKey');
+    const apiKeyGroup = document.getElementById('apiKeyGroup');
+    const apiKeyHelp = document.getElementById('apiKeyHelp');
+    const awsSecretGroup = document.getElementById('awsSecretGroup');
+    const awsSecretInput = document.getElementById('awsSecretKey');
+
+    if (this.value === 'generative-ollama') {
+        apiKeyInput.value = 'N/A';
+        apiKeyInput.disabled = true;
+        apiKeyInput.removeAttribute('required');
+        apiKeyInput.type="text";
+        apiKeyHelp.textContent = 'No API key is needed for Ollama.';
+        awsSecretGroup.classList.add('d-none');
+        awsSecretInput.value = '';
+        awsSecretInput.disabled = true;
+        awsSecretInput.removeAttribute('required');
+    } else if (this.value === 'X-AWS-Access-Key') {
+        apiKeyGroup.querySelector('label').textContent = 'AWS Access Key';
+        apiKeyInput.placeholder = 'Enter AWS Access Key';
+        apiKeyInput.disabled = false;
+        apiKeyInput.setAttribute('required', 'required');
+        apiKeyInput.value=""
+        apiKeyInput.type="password";
+        apiKeyHelp.textContent = 'Your AWS access key will be encrypted and stored securely.';
+        awsSecretGroup.classList.remove('d-none');
+        awsSecretInput.disabled = false;
+        awsSecretInput.placeholder = 'Enter AWS Secret Key';
+        awsSecretInput.setAttribute('required', 'required');
+        awsSecretInput.value=""
+    } else {
+        apiKeyGroup.querySelector('label').textContent = 'API Key';
+        apiKeyInput.placeholder = '';
+        apiKeyInput.disabled = false;
+        apiKeyInput.value=""
+        apiKeyInput.setAttribute('required', 'required');
+        apiKeyInput.type="password";
+        apiKeyHelp.textContent = 'Your API key will be encrypted and stored securely.';
+        awsSecretGroup.classList.add('d-none');
+        awsSecretInput.value = '';
+        awsSecretInput.disabled = true;
+        awsSecretInput.removeAttribute('required');
     }
-    
-    displayResults(filteredResults);
-}
+});
 </script>
 {% endblock %}

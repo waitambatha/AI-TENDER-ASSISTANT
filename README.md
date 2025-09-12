@@ -55,18 +55,26 @@ An AI-powered document analysis system for processing tender documents and extra
    DB_PORT=5432
    OPENAI_API_KEY=your_openai_api_key
    ```
+4. **Create Weaviate Instance:**
+   ```bash
+   docker compose up -d --remove-orphans
+   ```
+   if you don't have postgres installed:
+   ```bash
+   docker compose -f db-docker-compose.yml up -d --remove-orphans
+   ```
 
-4. **Run migrations:**
+5. **Run migrations:**
    ```bash
    python manage.py migrate
    ```
 
-5. **Create admin user:**
+6. **Create admin user:**
    ```bash
    python manage.py createsuperuser
    ```
 
-6. **Start the server:**
+7. **Start the server:**
    ```bash
    python manage.py runserver
    ```

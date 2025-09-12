@@ -202,6 +202,14 @@
                 </div>
             `;
         } else {
+            if (data.summary) {
+                html += `
+                    <h6 class="text-secondary mb-3">Summary</h6>
+                    <div class="mb-4">
+                        <p>${data.summary}</p>
+                    </div>
+                `;
+            }
             // Display structured summary
             if (data.tender_information) {
                 html += '<h6 class="text-primary mb-3">Tender Information</h6>';
