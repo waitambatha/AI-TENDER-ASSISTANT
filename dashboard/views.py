@@ -13,21 +13,9 @@ import json
 from datetime import datetime
 import zipfile
 import tempfile
+from .weaviate_module.client import get_collection, client
+from .weaviate_module.utils import send_to_weaviate,get_related_text
 
-try:
-    from .weaviate_module.utils import send_to_weaviate
-except ImportError:
-    def send_to_weaviate(filename, content):
-        return True  # Fallback if weaviate module not available
-
-try:
-    from .weaviate_service import WeaviateService
-except ImportError:
-    class WeaviateService:
-        def search_documents(self, query, limit=10):
-            return []
-        def add_document(self, *args):
-            pass
 
 @login_required
 def dashboard_view(request):
@@ -93,8 +81,7 @@ def search_documents(request):
             return JsonResponse({'results': existing_log.results, 'from_cache': True})
         
         # Search in Weaviate
-        weaviate_service = WeaviateService()
-        results = weaviate_service.search_documents(query)
+        results = get_related_text(query)
         
         # Save search log
         SearchLog.objects.create(
@@ -120,10 +107,23 @@ def manage_api_keys(request):
         if action == 'add':
             name = request.POST.get('name')
             api_key = request.POST.get('api_key')
+            aws_secret_key = ""
+            
+            try:
+                aws_secret_key = request.POST.get("aws_secret_key")
+            except:
+                pass
+
             
             if name and api_key:
                 user_key = UserAPIKey(user=request.user, name=name)
                 user_key.set_api_key(api_key)
+                user_key.save()
+                messages.success(request, f'API key "{name}" added successfully')
+                
+            if aws_secret_key:
+                user_key = UserAPIKey(user=request.user, name="X-AWS-Secret-Key")
+                user_key.set_api_key(aws_secret_key)
                 user_key.save()
                 messages.success(request, f'API key "{name}" added successfully')
         
@@ -204,32 +204,11 @@ def process_document_view(request, document_id):
 
     try:
         text_content = extract_text_from_pdf(document.file.path)
-        is_document_unique = send_to_weaviate(document.file.name, text_content)
+        is_document_unique,summary_filename = send_to_weaviate(document.file.name, text_content)
         
         if is_document_unique:
             if not text_content.strip():
                 raise Exception("No text could be extracted from the document")
-            
-            # Use user's API key if available
-            api_key = get_user_api_key(request.user)
-            ai_summary = process_with_llama_weaviate(text_content, document.file.name, api_key)
-            
-            # Add to Weaviate
-            weaviate_service = WeaviateService()
-            weaviate_service.add_document(
-                document.id, 
-                document.file.name, 
-                text_content, 
-                json.dumps(ai_summary)
-            )
-            
-            summary_filename = f"{os.path.splitext(document.file.name)[0]}_ai_summarized.json"
-            summary_path = os.path.join(settings.MEDIA_ROOT, 'summaries', summary_filename)
-            
-            os.makedirs(os.path.dirname(summary_path), exist_ok=True)
-            
-            with open(summary_path, 'w', encoding='utf-8') as f:
-                json.dump(ai_summary, f, indent=2, ensure_ascii=False)
             
             document.summarized_file.name = f'summaries/{summary_filename}'
             document.status = 'processed'
@@ -549,24 +528,11 @@ def process_document_view(request, document_id):
         # Extract text from PDF
         text_content = extract_text_from_pdf(document.file.path)
         
-        is_document_unique = send_to_weaviate(document.file.name,text_content)
+        is_document_unique,summary_filename = send_to_weaviate(document.file.name,text_content)
         
         if is_document_unique:
             if not text_content.strip():
                 raise Exception("No text could be extracted from the document")
-            
-            # Process with Llama + Weaviate
-            ai_summary = process_with_llama_weaviate(text_content, document.file.name)
-            
-            # Save the AI summary
-            summary_filename = f"{os.path.splitext(document.file.name)[0]}_ai_summarized.json"
-            summary_path = os.path.join(settings.MEDIA_ROOT, 'summaries', summary_filename)
-            
-            # Ensure summaries directory exists
-            os.makedirs(os.path.dirname(summary_path), exist_ok=True)
-            
-            with open(summary_path, 'w', encoding='utf-8') as f:
-                json.dump(ai_summary, f, indent=2, ensure_ascii=False)
             
             # Update document record
             document.summarized_file.name = f'summaries/{summary_filename}'
@@ -635,11 +601,23 @@ def view_summary_file(request, document_id):
     """Serve summary files securely"""
     document = get_object_or_404(Document, pk=document_id)
     
+    summary = weaviate_summary(document.file.name)
+    
     if not document.summarized_file or not os.path.exists(document.summarized_file.path):
         raise Http404("Summary file not found")
     
-    with open(document.summarized_file.path, 'r', encoding='utf-8') as f:
-        content = f.read()
-        response = HttpResponse(content, content_type='application/json')
-        response['Content-Disposition'] = f'attachment; filename="{os.path.basename(document.summarized_file.name)}"'
-        return response
+    return JsonResponse({"summary":summary})
+
+def weaviate_summary(document_name):
+    documents = get_collection()
+    from weaviate.classes.query import Filter
+    result = documents.query.fetch_objects(
+        filters=Filter.by_property("file_name").equal(document_name),
+        limit=1
+    )
+    if result.objects and len(result.objects) > 0:
+        properties = result.objects[0].properties
+        # Adjust 'summary' to the actual property name if different
+        return properties.get("summary", None)
+    return None
+    
