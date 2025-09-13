@@ -13,8 +13,11 @@ import json
 from datetime import datetime
 import zipfile
 import tempfile
-from .weaviate_module.client import get_collection, client
+import logging
+from .weaviate_module.client import get_collection, get_weaviate_client
 from .weaviate_module.utils import send_to_weaviate,get_related_text
+
+logger = logging.getLogger(__name__)
 
 
 @login_required
@@ -82,6 +85,9 @@ def search_documents(request):
         
         # Search in Weaviate
         results = get_related_text(query)
+        
+        if results is None:
+            return JsonResponse({'results': [], 'message': 'Search service temporarily unavailable'})
         
         # Save search log
         SearchLog.objects.create(
@@ -204,21 +210,25 @@ def process_document_view(request, document_id):
 
     try:
         text_content = extract_text_from_pdf(document.file.path)
-        is_document_unique,summary_filename = send_to_weaviate(document.file.name, text_content)
         
-        if is_document_unique:
-            if not text_content.strip():
-                raise Exception("No text could be extracted from the document")
-            
+        if not text_content.strip():
+            raise Exception("No text could be extracted from the document")
+        
+        # Use Weaviate processing
+        is_document_unique, summary_filename = send_to_weaviate(document.file.name, text_content)
+        
+        if is_document_unique and summary_filename:
             document.summarized_file.name = f'summaries/{summary_filename}'
             document.status = 'processed'
             document.save()
             
             messages.success(request, f'Successfully processed "{document.file.name}" with AI analysis.')
-        else:
+        elif not is_document_unique:
             document.status = 'failed'
             document.save()
             messages.error(request, f'Failed to process "{document.file.name}": A similar file has already been uploaded.')
+        else:
+            raise Exception("AI processing failed")
         
     except Exception as e:
         document.status = 'failed'
@@ -464,160 +474,148 @@ def delete_document_view(request, document_id):
         messages.success(request, f'Successfully deleted "{filename}"')
     
     return redirect('dashboard')
+def get_document_summary(document_name):
+    """Get document summary from Weaviate"""
+    return weaviate_summary(document_name)
+
+def weaviate_summary(document_name):
+    """Get summary from Weaviate"""
+    client = get_collection()
+    
+    if client is None:
+        raise Exception("Weaviate connection failed")
+        
+    try:
+        where_filter = {
+            "path": ["file_name"],
+            "operator": "Equal",
+            "valueText": document_name
+        }
+        
+        result = client.query.get("TenderDocument", ["summary"]).with_where(where_filter).with_limit(1).do()
+        
+        documents = result.get("data", {}).get("Get", {}).get("TenderDocument", [])
+        if documents:
+            return documents[0].get("summary")
+        return None
+    except Exception as e:
+        logger.error(f"Error getting Weaviate summary: {e}")
+        raise Exception(f"Failed to get summary: {e}")
 
 @login_required
-def upload_file_view(request):
-    if not request.user.is_staff:
-        messages.error(request, 'You do not have permission to upload files.')
-        return redirect('dashboard')
-
-    if request.method == 'POST':
-        form = DocumentForm(request.POST, request.FILES)
-        if form.is_valid():
-            document = form.save(commit=False)
-            document.uploaded_by = request.user
-            document.save()
-            messages.success(request, f'Successfully uploaded "{document.file.name}"')
-            return redirect('dashboard')
-        else:
-            messages.error(request, 'Error uploading file. Please check the file format and size.')
-
-    return redirect('dashboard')
-
-@login_required
-def document_detail_view(request, document_id):
+def get_summary_view(request, document_id):
+    """API endpoint to get document summary"""
     document = get_object_or_404(Document, pk=document_id)
     
-    # Check if file exists and get size safely
-    file_exists = False
-    file_size = 0
+    try:
+        summary = get_document_summary(document.file.name)
+        if summary:
+            return JsonResponse({"summary": summary})
+        else:
+            return JsonResponse({"summary": None, "message": "No summary available"})
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+@login_required
+def admin_weaviate_view(request):
+    """Admin page to manage Weaviate data"""
+    if not request.user.is_staff:
+        messages.error(request, 'Access denied. Admin privileges required.')
+        return redirect('dashboard')
+    
+    documents = get_collection()
+    weaviate_data = []
+    
+    if documents:
+        try:
+            result = documents.query.get("TenderDocument", ["file_name", "time_created", "content_hash", "summary"]).with_limit(100).do()
+            weaviate_data = result.get("data", {}).get("Get", {}).get("TenderDocument", [])
+        except Exception as e:
+            messages.error(request, f'Error fetching Weaviate data: {e}')
+    
+    context = {
+        'weaviate_data': weaviate_data,
+        'total_count': len(weaviate_data)
+    }
+    return render(request, 'dashboard/admin_weaviate.html', context)
+
+@login_required
+def delete_weaviate_entry(request, content_hash):
+    """Delete entry from Weaviate by content hash"""
+    if not request.user.is_staff:
+        messages.error(request, 'Access denied. Admin privileges required.')
+        return redirect('dashboard')
+    
+    if request.method == 'POST':
+        documents = get_collection()
+        if documents:
+            try:
+                where_filter = {
+                    "path": ["content_hash"],
+                    "operator": "Equal",
+                    "valueText": content_hash
+                }
+                
+                # Get the document ID first
+                result = documents.query.get("TenderDocument", ["_additional {id}"]).with_where(where_filter).with_limit(1).do()
+                entries = result.get("data", {}).get("Get", {}).get("TenderDocument", [])
+                
+                if entries:
+                    doc_id = entries[0]["_additional"]["id"]
+                    documents.data_object.delete(doc_id, "TenderDocument")
+                    messages.success(request, 'Entry deleted successfully from Weaviate')
+                else:
+                    messages.error(request, 'Entry not found in Weaviate')
+            except Exception as e:
+                messages.error(request, f'Error deleting from Weaviate: {e}')
+    
+    return redirect('admin_weaviate')
+
+@login_required
+def view_weaviate_summary(request, content_hash):
+    """View detailed summary from Weaviate"""
+    if not request.user.is_staff:
+        messages.error(request, 'Access denied. Admin privileges required.')
+        return redirect('dashboard')
+    
+    documents = get_collection()
+    summary_data = None
+    
+    if documents:
+        try:
+            where_filter = {
+                "path": ["content_hash"],
+                "operator": "Equal",
+                "valueText": content_hash
+            }
+            
+            result = documents.query.get("TenderDocument", ["file_name", "time_created", "summary", "text_content"]).with_where(where_filter).with_limit(1).do()
+            entries = result.get("data", {}).get("Get", {}).get("TenderDocument", [])
+            
+            if entries:
+                summary_data = entries[0]
+        except Exception as e:
+            messages.error(request, f'Error fetching summary: {e}')
+    
+    context = {
+        'summary_data': summary_data,
+        'content_hash': content_hash
+    }
+    return render(request, 'dashboard/view_weaviate_summary.html', context)
+@login_required
+def view_document_content(request, document_id):
+    """View the text content of a document"""
+    document = get_object_or_404(Document, pk=document_id)
     
     try:
-        if document.file and os.path.exists(document.file.path):
-            file_exists = True
-            file_size = os.path.getsize(document.file.path)
-    except (ValueError, OSError):
-        pass
+        text_content = extract_text_from_pdf(document.file.path)
+        if not text_content.strip():
+            text_content = "No text content could be extracted from this document."
+    except Exception as e:
+        text_content = f"Error extracting text: {str(e)}"
     
     context = {
         'document': document,
-        'file_size': file_size,
-        'file_exists': file_exists
+        'text_content': text_content,
+        'filename': os.path.basename(document.file.name)
     }
-    return render(request, 'dashboard/document_detail.html', context)
-
-@login_required
-def process_document_view(request, document_id):
-    document = get_object_or_404(Document, pk=document_id)
-    
-    # Check if already processed
-    if document.status == 'processed':
-        messages.info(request, f'Document "{document.file.name}" is already processed.')
-        return redirect('dashboard')
-    
-    # Check if currently processing
-    if document.status == 'processing':
-        messages.warning(request, f'Document "{document.file.name}" is currently being processed.')
-        return redirect('dashboard')
-    
-    # Update status to processing
-    document.status = 'processing'
-    document.save()
-
-    try:
-        # Extract text from PDF
-        text_content = extract_text_from_pdf(document.file.path)
-        
-        is_document_unique,summary_filename = send_to_weaviate(document.file.name,text_content)
-        
-        if is_document_unique:
-            if not text_content.strip():
-                raise Exception("No text could be extracted from the document")
-            
-            # Update document record
-            document.summarized_file.name = f'summaries/{summary_filename}'
-            document.status = 'processed'
-            document.save()
-            
-            messages.success(request, f'Successfully processed "{document.file.name}" with AI analysis.')
-        
-        else:
-            document.status = 'failed'
-            document.save()
-            messages.error(request, f'Failed to process "{document.file.name}": A similar file has already been uploaded.')
-        
-    except Exception as e:
-        document.status = 'failed'
-        document.save()
-        messages.error(request, f'Failed to process "{document.file.name}": {str(e)}')
-
-    return redirect('dashboard')
-
-def extract_text_from_pdf(file_path):
-    """Extract text from PDF using multiple methods"""
-    try:
-        # Try PyPDF2 first (faster)
-        import PyPDF2
-        with open(file_path, 'rb') as file:
-            pdf_reader = PyPDF2.PdfReader(file)
-            text = ""
-            for page in pdf_reader.pages:
-                text += page.extract_text() + "\n"
-        
-        if text.strip():
-            return text
-    except:
-        pass
-    
-    try:
-        # Fallback to OCR with pytesseract
-        from pdf2image import convert_from_path
-        import pytesseract
-        
-        images = convert_from_path(file_path)
-        text = ""
-        for image in images:
-            text += pytesseract.image_to_string(image) + "\n"
-        
-        return text
-    except Exception as e:
-        raise Exception(f"Could not extract text: {str(e)}")
-
-@login_required
-def view_document_file(request, document_id):
-    """Serve document files securely"""
-    document = get_object_or_404(Document, pk=document_id)
-    
-    if not os.path.exists(document.file.path):
-        raise Http404("Document file not found")
-    
-    with open(document.file.path, 'rb') as f:
-        response = HttpResponse(f.read(), content_type='application/pdf')
-        response['Content-Disposition'] = f'inline; filename="{document.file.name}"'
-        return response
-
-@login_required
-def view_summary_file(request, document_id):
-    """Serve summary files securely"""
-    document = get_object_or_404(Document, pk=document_id)
-    
-    summary = weaviate_summary(document.file.name)
-    
-    if not document.summarized_file or not os.path.exists(document.summarized_file.path):
-        raise Http404("Summary file not found")
-    
-    return JsonResponse({"summary":summary})
-
-def weaviate_summary(document_name):
-    documents = get_collection()
-    from weaviate.classes.query import Filter
-    result = documents.query.fetch_objects(
-        filters=Filter.by_property("file_name").equal(document_name),
-        limit=1
-    )
-    if result.objects and len(result.objects) > 0:
-        properties = result.objects[0].properties
-        # Adjust 'summary' to the actual property name if different
-        return properties.get("summary", None)
-    return None
-    
+    return render(request, 'dashboard/view_document_content.html', context)

@@ -1,7 +1,8 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load dashboard_filters %}
 
-{% block title %}Document Management - Tender AI Assistant{% endblock %}
+{% block title %}Repository Management - Tender AI Assistant{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -139,7 +140,7 @@
     <!-- Header -->
     <div class="document-management">
         <h2 class="mb-3">
-            <i class="fas fa-folder-open me-2"></i>Document Management
+            <i class="fas fa-folder-open me-2"></i>Repository Management
         </h2>
         <p class="mb-0">Manage, search, and download your uploaded documents</p>
     </div>
@@ -222,9 +223,9 @@
                                 <div class="d-flex align-items-center">
                                     <i class="fas fa-file-pdf text-danger me-2"></i>
                                     <div>
-                                        <strong>{{ document.file.name|truncatechars:50 }}</strong>
-                                        {% if document.file.name|length > 50 %}
-                                        <br><small class="text-muted">{{ document.file.name }}</small>
+                                        <strong>{{ document.file.name|filename_only|truncatechars:50 }}</strong>
+                                        {% if document.file.name|filename_only|length > 50 %}
+                                        <br><small class="text-muted">{{ document.file.name|filename_only }}</small>
                                         {% endif %}
                                     </div>
                                 </div>
@@ -263,17 +264,13 @@
                             </td>
                             <td>
                                 <div class="btn-group btn-group-sm">
-                                    <a href="{% url 'view_document' document.id %}" 
-                                       class="btn btn-outline-primary" title="View Document">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-                                    <a href="{% url 'document_detail' document.id %}" 
-                                       class="btn btn-outline-info" title="Details">
-                                        <i class="fas fa-info-circle"></i>
+                                    <a href="{% url 'view_document_content' document.id %}" 
+                                       class="btn btn-outline-primary" title="View Document Content">
+                                        <i class="fas fa-eye"></i> View
                                     </a>
                                     <button type="button" class="btn btn-outline-success" 
                                             onclick="downloadSingle({{ document.id }})" title="Download">
-                                        <i class="fas fa-download"></i>
+                                        <i class="fas fa-download"></i> Download
                                     </button>
                                 </div>
                             </td>

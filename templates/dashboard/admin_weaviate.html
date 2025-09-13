@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Weaviate Repository Management{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">Weaviate Repository Management</h4>
+                    <span class="badge bg-primary">Total: {{ total_count }}</span>
+                </div>
+                <div class="card-body">
+                    {% if weaviate_data %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Document Name</th>
+                                    <th>Created</th>
+                                    <th>Content Hash</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in weaviate_data %}
+                                <tr>
+                                    <td>{{ item.file_name }}</td>
+                                    <td>{{ item.time_created|date:"M d, Y H:i" }}</td>
+                                    <td><code>{{ item.content_hash|slice:":8" }}...</code></td>
+                                    <td>
+                                        <a href="{% url 'view_weaviate_summary' item.content_hash %}" class="btn btn-sm btn-info">View</a>
+                                        <form method="post" action="{% url 'delete_weaviate_entry' item.content_hash %}" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this entry?')">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <p class="text-muted">No data found in Weaviate repository.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

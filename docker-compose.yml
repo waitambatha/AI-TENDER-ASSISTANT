@@ -8,14 +8,14 @@ services:
     - '8080'
     - --scheme
     - http
-    image: semitechnologies/weaviate:1.21.8
+    image: semitechnologies/weaviate:1.23.7
     ports:
-    - "8080:8080"
+    - "8081:8080"
     restart: on-failure:0
     environment:
       QUERY_DEFAULTS_LIMIT: 25
       AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'true'
       PERSISTENCE_DATA_PATH: '/var/lib/weaviate'
-      DEFAULT_VECTORIZER_MODULE: 'text2vec-transformers'
-      ENABLE_MODULES: 'text2vec-transformers,generative-openai,generative-cohere,generative-palm,generative-aws,generative-mistral,generative-octoai,generative-anthropic,generative-databricks,generative-friendliai,generative-ollama,generative-anyscale'
+      DEFAULT_VECTORIZER_MODULE: 'none'
+      ENABLE_MODULES: 'generative-openai'
       CLUSTER_HOSTNAME: 'node1'

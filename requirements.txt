@@ -51,7 +51,7 @@ tqdm==4.67.1
 typing-inspection==0.4.1
 typing_extensions==4.15.0
 urllib3==2.5.0
-validators==0.28.1
+validators>=0.34.0
 weaviate-client==4.16.9
 zstandard==0.24.0
 sentence-transformers==3.0.1
