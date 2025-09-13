@@ -7,61 +7,55 @@ import json
 from django.conf import settings
 from ollama import chat,ChatResponse
 import logging
+from weaviate.classes.query import Filter
 
 logger = logging.getLogger(__name__)
 
-def send_to_weaviate(document_name,text_content) -> tuple[bool,str]:
-    client = get_collection()
     
-    if client is None:
-        raise Exception("Weaviate connection failed")
-
+def send_to_weaviate(document_name,text_content) -> tuple[bool,str]:
     try:
+        documents = get_collection()
+        
         content_hash = hashlib.sha256(text_content.encode('utf-8')).hexdigest()
+        existing = documents.query.fetch_objects(
+            filters=Filter.by_property("content_hash").equal(content_hash),
+            limit=1
+        )
         
-        # Check for existing document with same hash
-        where_filter = {
-            "path": ["content_hash"],
-            "operator": "Equal",
-            "valueText": content_hash
-        }
-        
-        existing = client.query.get("TenderDocument", ["file_name"]).with_where(where_filter).with_limit(1).do()
-        
-        if existing.get("data", {}).get("Get", {}).get("TenderDocument"):
-            return False, ""
+        if existing and getattr(existing, "objects", None) and len(existing.objects) > 0:
+            return False,""
         
         response: ChatResponse = chat(model='dolphin-phi', messages=[
+            {
+                'role':'system',
+                'content':'You are an assistant capable of analysing tender documents. You role is to: Extract tender information, Identifies key dates and deadlines, Lists requirements and eligibility and Provides opportunity assessment.'
+            },
             {
                 'role': 'user',
                 'content': f'Summarize this content: {text_content}',
             },
-        ])
-        
+        ])    
         summary_filename = f"{document_name}_ai_summarized.json"
         summary_path = os.path.join(settings.MEDIA_ROOT, 'summaries', summary_filename)
         
         # Ensure summaries directory exists
-        os.makedirs(os.path.dirname(summary_path), exist_ok=True)
+        os.makedirs(os.path.dirname(document_name), exist_ok=True)
         
         with open(summary_path, 'w', encoding='utf-8') as f:
             json.dump(response.message.content, f, indent=2, ensure_ascii=False)
         
-        # Insert document into Weaviate
-        data_object = {
-            "file_name": document_name,
-            "time_created": datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
-            "text_content": text_content,
-            "content_hash": content_hash,
-            "summary": response.message.content
-        }
+        document = documents.data.insert({
+            "file_name":document_name,
+            "time_created": datetime.now(),
+            "text_content":text_content,
+            "content_hash":content_hash,
+            "summary":response.message.content
+        }) 
         
-        client.data_object.create(data_object, "TenderDocument")
-        
-        return True, summary_filename
+        return True,summary_filename
     except Exception as e:
-        logger.error(f"Error in send_to_weaviate: {e}")
-        raise Exception(f"Weaviate processing failed: {e}")
+        logger.warning(f"Error obtained while getting collection: {str(e)}")
+        return False,str(e)
 
 def get_related_text(query):
     client = get_collection()

@@ -479,28 +479,20 @@ def get_document_summary(document_name):
     return weaviate_summary(document_name)
 
 def weaviate_summary(document_name):
-    """Get summary from Weaviate"""
-    client = get_collection()
-    
-    if client is None:
-        raise Exception("Weaviate connection failed")
-        
     try:
-        where_filter = {
-            "path": ["file_name"],
-            "operator": "Equal",
-            "valueText": document_name
-        }
-        
-        result = client.query.get("TenderDocument", ["summary"]).with_where(where_filter).with_limit(1).do()
-        
-        documents = result.get("data", {}).get("Get", {}).get("TenderDocument", [])
-        if documents:
-            return documents[0].get("summary")
+        documents = get_collection()
+        from weaviate.classes.query import Filter
+        result = documents.query.fetch_objects(
+            filters=Filter.by_property("file_name").equal(document_name),
+            limit=1
+        )
+        if result.objects and len(result.objects) > 0:
+            properties = result.objects[0].properties
+            # Adjust 'summary' to the actual property name if different
+            return properties.get("summary", None)
         return None
     except Exception as e:
-        logger.error(f"Error getting Weaviate summary: {e}")
-        raise Exception(f"Failed to get summary: {e}")
+        logger.warning(f"Error obtained while getting summary: {str(e)}")
 
 @login_required
 def get_summary_view(request, document_id):
