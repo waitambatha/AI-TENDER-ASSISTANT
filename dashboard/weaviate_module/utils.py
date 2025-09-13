@@ -23,6 +23,10 @@ def send_to_weaviate(document_name,text_content) -> tuple[bool,str]:
     
     response: ChatResponse = chat(model='dolphin-phi', messages=[
         {
+            'role':'system',
+            'content':'You are an assistant capable of analysing tender documents. You role is to: Extract tender information, Identifies key dates and deadlines, Lists requirements and eligibility and Provides opportunity assessment.'
+        },
+        {   
             'role': 'user',
             'content': f'Summarize this content: {text_content}',
         },
